@@ -7,6 +7,7 @@
         xmlns:viewModel="clr-namespace:Quicksave_Clipboard.MVVM.ViewModel"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:Icon="http://metro.mahapps.com/winfx/xaml/iconpacks"
+        xmlns:core="clr-namespace:Quicksave_Clipboard.Core"
         mc:Ignorable="d"
         Height="640" Width="960"
         WindowStyle="None"
@@ -14,12 +15,13 @@
         Background="Transparent"
         AllowsTransparency="True"
         WindowStartupLocation="CenterScreen" 
+        
         >
 
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <core:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </Window.Resources>
-    
+
     <Window.DataContext>
         <viewModel:MainViewModel/>
     </Window.DataContext>

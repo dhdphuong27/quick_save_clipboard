@@ -6,7 +6,8 @@
              xmlns:viewModel="clr-namespace:Quicksave_Clipboard.MVVM.ViewModel"
              xmlns:view="clr-namespace:Quicksave_Clipboard.MVVM.View"
              StartupUri="MainWindow.xaml"
-             xmlns:tb="http://www.hardcodet.net/taskbar">
+             xmlns:tb="http://www.hardcodet.net/taskbar"
+             xmlns:core="clr-namespace:Quicksave_Clipboard.Core">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -28,12 +29,14 @@
                                       SecondaryColor="Lime"/>
             <tb:TaskbarIcon x:Key="MyTrayIcon"
                 IconSource="pack://application:,,,/Images/app.ico"
-                ToolTipText="MyApp is running..." />
+                ToolTipText="MyApp is running..." 
+                TrayMouseDoubleClick="MyTrayIcon_TrayMouseDoubleClick"/>
 
             <!-- 4. View-ViewModel mapping -->
             <DataTemplate DataType="{x:Type viewModel:ClipboardViewModel}">
                 <view:ClipboardView/>
             </DataTemplate>
+            <core:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         </ResourceDictionary>
         
     </Application.Resources>

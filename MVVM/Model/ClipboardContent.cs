@@ -62,6 +62,7 @@ namespace Quicksave_Clipboard.MVVM.Model
         }
 
         public abstract void SaveToFile();
+        public abstract void DeleteFile();
 
     }
     public enum Status

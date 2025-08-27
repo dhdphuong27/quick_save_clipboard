@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using Quicksave_Clipboard.MVVM.Model;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -16,9 +17,29 @@ namespace Quicksave_Clipboard
     /// </summary>
     public partial class MainWindow : Window
     {
+        private const int HOTKEY_ID = 9000;
         public MainWindow()
         {
             InitializeComponent();
+            Loaded += (s, e) =>
+            {
+
+                HotkeyManager.RegisterHotKey(this, HOTKEY_ID, () =>
+                {
+                    // Get VM and call SaveContentCommand
+                    if (DataContext is Quicksave_Clipboard.MVVM.ViewModel.MainViewModel mainVM)
+                    {
+                        var clipboardVM = mainVM.ClipboardVM;
+                        if (clipboardVM.SaveContentCommand.CanExecute(null))
+                            clipboardVM.SaveContentCommand.Execute(null);
+                    }
+                });
+            };
+
+            Closed += (s, e) =>
+            {
+                HotkeyManager.UnregisterHotKey(this, HOTKEY_ID);
+            };
         }
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -33,5 +54,6 @@ namespace Quicksave_Clipboard
                 this.DragMove();
             }
         }
+
     }
 }

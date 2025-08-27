@@ -82,5 +82,25 @@ namespace Quicksave_Clipboard.MVVM.Model
             string filePath = Path.Combine(directoryPath, fileName);
             File.WriteAllText(filePath, FullText);
         }
+        public override void DeleteFile()
+        {
+            string directoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ClipboardHistory");
+            string fileName = ID + ".txt";
+            string filePath = Path.Combine(directoryPath, fileName);
+
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // optional: log or notify
+                MessageBox.Show($"Failed to delete file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
     }
 }

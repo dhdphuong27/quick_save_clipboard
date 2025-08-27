@@ -1,234 +1,153 @@
 ﻿using Quicksave_Clipboard.MVVM.Model;
 using Quicksave_Clipboard.MVVM.View;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Diagnostics.Eventing.Reader;
 using System.IO;
-using System.Reflection.Metadata;
-using System.Runtime.CompilerServices;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Threading;
-using static MaterialDesignThemes.Wpf.Theme;
-using static MaterialDesignThemes.Wpf.Theme.ToolBar;
 
 namespace Quicksave_Clipboard.MVVM.ViewModel
 {
-    class ClipboardViewModel: ObservableObject
+    public class ClipboardViewModel : ObservableObject
     {
-        public RelayCommand SaveContentCommand { get; }
+        // --- backing fields ---
+        private List<ClipboardContent> contents;
+        private PagedCollection<ClipboardContent> _pagedData;
+        private ObservableCollection<ButtonModel> _buttons;
+        private int _currentPageNumber;
+        public int _loadingCount;
+        private bool _isLoaded;
 
-        public List<ClipboardContent> contents { get; set; } 
+        // --- properties bound to UI ---
+        public PagedCollection<ClipboardContent> PagedData
+        {
+            get => _pagedData;
+            private set => SetProperty(ref _pagedData, value);
+        }
 
-        public PagedCollection<ClipboardContent> PagedData { get; private set; }
+        public ObservableCollection<ButtonModel> Buttons
+        {
+            get => _buttons;
+            set => SetProperty(ref _buttons, value);
+        }
 
-        public RelayCommand LoadPreviousPageCommand { get; }
-        public RelayCommand LoadNextPageCommand { get; }
-        public RelayCommand SelectPageCommand { get; }
+        public int CurrentPageNumber
+        {
+            get => _currentPageNumber;
+            set => SetProperty(ref _currentPageNumber, value);
+        }
 
+        // true when any operation is running
+        private bool _isLoading = false;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            private set => SetProperty(ref _isLoading, value);
+        }
+
+
+        // --- commands (ICommand-compatible) ---
         public AsyncRelayCommand LoadedCommand { get; }
+        public AsyncRelayCommand LoadPreviousPageCommand { get; }
+        public AsyncRelayCommand LoadNextPageCommand { get; }
+        public AsyncRelayCommand SelectPageCommand { get; }
+        public AsyncRelayCommand DeleteCommand { get; }
 
-        public string TestMsg { get; set; } = "This is the test notification message";
-
-        public ObservableCollection<ButtonModel> Buttons { get; set; }
-
-        public int CurrentPageNumber { get; set; }
-
-        //public RelayCommand ShowMessage {  get; set; } = new RelayCommand(o => { MessageBox.Show("hello"); });
-
+        public RelayCommand SaveContentCommand { get; }
+        public RelayCommand CopyCommand { get; }
         public RelayCommand ViewCommand { get; }
 
         public int RowsPerPage = 7;
 
-        public RelayCommand CopyCommand { get; }
-
-        private ClipboardContent _selectedDataItem;
-        public ClipboardContent SelectedDataItem
-        {
-            get => _selectedDataItem;
-            set
-            {
-                if (_selectedDataItem != value)
-                {
-                    _selectedDataItem = value;
-                    OnPropertyChanged(nameof(SelectedDataItem));
-
-                    //if (_selectedDataItem != null)
-                    //{
-                    //    RowClickCommand.Execute(_selectedDataItem);
-                    //}
-                }
-            }
-        }
-
         public ClipboardViewModel()
         {
-
             contents = new List<ClipboardContent>();
 
-            LoadPreviousPageCommand = new RelayCommand(LoadPreviousPage);
-            
-            LoadNextPageCommand = new RelayCommand(LoadNextPage);
-
+            // async commands (so we can await and show spinner reliably)
             LoadedCommand = new AsyncRelayCommand(OnLoadedAsync);
+            LoadPreviousPageCommand = new AsyncRelayCommand(async _ => await LoadPreviousPageAsync());
+            LoadNextPageCommand = new AsyncRelayCommand(async _ => await LoadNextPageAsync());
+            SelectPageCommand = new AsyncRelayCommand(async p => await SelectPageAsync(p));
+            DeleteCommand = new AsyncRelayCommand(async p => await DeleteContentAsync(p));
 
-
+            // quick sync commands (UI-thread only)
             SaveContentCommand = new RelayCommand(SaveContent);
-
-            SelectPageCommand = new RelayCommand(SelectPage);
-
+            CopyCommand = new RelayCommand(param => CopyContent(param));
             ViewCommand = new RelayCommand(param => ViewContent(param));
 
-            CopyCommand = new RelayCommand(param => CopyContent(param));
 
-            //new DispatcherTimer(//It will not wait after the application is idle.
-            //           TimeSpan.Zero,
-            //           //It will wait until the application is idle
-            //           DispatcherPriority.ApplicationIdle,
-            //           //It will call this when the app is idle
-            //           OnLoadedAsync,
-            //           //On the UI thread
-            //           Application.Current.Dispatcher);
-
-            LoadedCommand.Execute(this);
         }
 
+        // ---------------- Loading counter helpers ----------------
+        private void BeginLoading()
+        {
+            _loadingCount++;
+            SetIsLoading();
+            OnPropertyChanged(nameof(IsLoading));
+        }
+        private void SetIsLoading()
+        {
+            if (_loadingCount > 0) IsLoading = true;
+            else IsLoading = false;
+            //MessageBox.Show("Setting IsLoading with _loadingCount = " + _loadingCount.ToString());
+            OnPropertyChanged(nameof(IsLoading));
+        }
+
+        private void EndLoading()
+        {
+            if (_loadingCount > 0) _loadingCount--;
+            
+            SetIsLoading();
+            OnPropertyChanged(nameof(IsLoading));
+        }
+        private async Task EndLoadingAfterRender()
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+            //MessageBox.Show("EndLoadingAfterRender");
+            EndLoading();
+        }
+
+
+        // ---------------- Public actions ----------------
+
+        // Save current clipboard text (must run on UI thread because of Clipboard API)
         public void SaveContent(object parameter)
         {
-            if (Clipboard.ContainsText())
-            {
-                string clipboardText = Clipboard.GetText();
-                ClipboardContent content = new TextClipboardContent(clipboardText);
-
-                PagedData.AddItem(content);
-
-
-                content.SaveToFile();
-            }
-            else
+            if (!Clipboard.ContainsText())
             {
                 MessageBox.Show("No text found in clipboard.", "Clipboard Content");
+                return;
+            }
+
+            BeginLoading();
+            try
+            {
+                string clipboardText = Clipboard.GetText();
+                var content = new TextClipboardContent(clipboardText);
+
+                // persist to disk (synchronous here; it's small text write)
+                content.SaveToFile();
+
+                // keep newest items at top
+                contents.Insert(0, content);
+
+                // refresh paging (keeps you on the current page if possible)
+                Paging(preserveCurrentPage: true);
+            }
+            finally
+            {
+                EndLoadingAfterRender();
             }
         }
-        public void LoadNextPage(object parameter)
+
+        private void CopyContent(object param)
         {
-            if (PagedData.CurrentPageIndex < PagedData.TotalPages - 1)
+            if (param is TextClipboardContent textContent)
             {
-                PagedData.LoadPage(PagedData.CurrentPageIndex + 1);
-                OnPropertyChanged(nameof(PagedData));
-                CurrentPageNumber = PagedData.CurrentPageIndex;
-                OnPropertyChanged(nameof(CurrentPageNumber));
+                Clipboard.SetText(textContent.FullText);
             }
-        }
-
-        public void LoadPreviousPage(object parameter)
-        {
-            if (PagedData.CurrentPageIndex > 0)
-            {
-                PagedData.LoadPage(PagedData.CurrentPageIndex - 1);
-                OnPropertyChanged(nameof(PagedData));
-                CurrentPageNumber = PagedData.CurrentPageIndex;
-                OnPropertyChanged(nameof(CurrentPageNumber));
-            }
-        }
-        
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged(string propertyName)
-        {
-            //MessageBox.Show($"Property changed: {propertyName}" + ": "+ CurrentPageNumber);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        private async Task OnLoadedAsync(object parameter)
-        {
-            contents = await FetchDataAsync();
-            Paging();
-
-        }
-        private void Paging()
-        {
-            Buttons = new ObservableCollection<ButtonModel>();
-            PagedData = new PagedCollection<ClipboardContent>(contents, RowsPerPage);
-            OnPropertyChanged(nameof(PagedData));
-            CurrentPageNumber = PagedData.CurrentPageIndex;
-            OnPropertyChanged(nameof(CurrentPageNumber));
-            if (PagedData.TotalPages == 0)
-            {
-                Buttons.Add(new ButtonModel { page = "1"});
-            }
-            for (int i = 1; i < PagedData.TotalPages + 1; i++)
-            {
-                Buttons.Add(new ButtonModel { page = i.ToString() });
-            }             
-        }
-        public void SelectPage(object parameter)
-        {
-            ButtonModel item = parameter as ButtonModel;
-            if (item != null)
-            {
-                int index = int.Parse(item.page)-1;
-                PagedData.LoadPage(index);
-                OnPropertyChanged(nameof(PagedData));
-                CurrentPageNumber = PagedData.CurrentPageIndex;
-                OnPropertyChanged(nameof(CurrentPageNumber));
-            }
-        }
-        private Task<List<ClipboardContent>> FetchDataAsync()
-        {
-            return Task.Run(() =>
-            {
-                string folderName = "ClipboardHistory";
-                string folderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, folderName);
-
-                // Check if the directory exists, and create it if it doesn't.
-                if (!Directory.Exists(folderPath))
-                {
-                    try
-                    {
-                        Directory.CreateDirectory(folderPath);
-                        // Optionally, you might want to log this creation for debugging or informational purposes.
-                        Console.WriteLine($"Created directory: {folderPath}"); // Important:  Use proper logging, not Console.WriteLine in a real app.
-                    }
-                    catch (Exception ex)
-                    {
-                        // Handle the exception appropriately.  Don't just swallow it.
-                        Console.Error.WriteLine($"Error creating directory: {folderPath}.  Exception: {ex.Message}");
-                        // Consider throwing a more specific exception or returning an empty list to indicate failure.
-                        return new List<ClipboardContent>(); // Or throw, depending on your error handling policy
-                    }
-                }
-
-                var textFiles = Directory.EnumerateFiles(folderPath, "*.txt");
-                List<ClipboardContent> data = new List<ClipboardContent>();
-                foreach (var file in textFiles.Reverse())
-                {
-                    string tmpStr = File.ReadAllText(file);
-                    string tmpFileName = Path.GetFileName(file);
-                    // Display or process the content as needed
-                    data.Add(new TextClipboardContent(tmpStr, tmpFileName.Split(".")[0]));
-                }
-                return data;
-            });
-        }
-
-
-        private void OpenViewWindow(ClipboardContent parameter)
-        {
-
-            var viewContentViewModel = new ViewContentViewModel(parameter);
-            
-            var viewContentWindow = new ViewContentWindow
-            {
-                DataContext = viewContentViewModel
-            };
-
-            // Show the edit window as a dialog
-            viewContentWindow.ShowDialog();
-
-            
         }
 
         private void ViewContent(object param)
@@ -239,24 +158,176 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
             }
         }
 
-        private void CopyContent(object param)
+        // ---------------- Async lifecycle / loading ----------------
+        private async Task OnLoadedAsync(object parameter)
         {
-            if (param is TextClipboardContent textContent)
+            if (_isLoaded) return;
+            _isLoaded = true;
+
+            BeginLoading();
+            try
             {
-                Clipboard.SetText(textContent.FullText);
+                contents = await Task.Run(() => FetchDataAsync());
+                Paging();
             }
-            //else if (param is ImageClipboardContent imageContent)
-            //{
-            //    Clipboard.SetImage(imageContent.ImageSource); // example
-            //}
+            finally
+            {
+                await EndLoadingAfterRender();
+            }
+        }
+
+        private Task<List<ClipboardContent>> FetchDataAsync()
+        {
+            return Task.Run(() =>
+            {
+                string folderName = "ClipboardHistory";
+                string folderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, folderName);
+
+                if (!Directory.Exists(folderPath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(folderPath);
+                    }
+                    catch
+                    {
+                        return new List<ClipboardContent>();
+                    }
+                }
+
+                var textFiles = Directory.EnumerateFiles(folderPath, "*.txt");
+                var data = new List<ClipboardContent>();
+                foreach (var file in textFiles.Reverse())
+                {
+                    string tmpStr = File.ReadAllText(file);
+                    string tmpFileName = Path.GetFileNameWithoutExtension(file);
+                    data.Add(new TextClipboardContent(tmpStr, tmpFileName));
+                }
+                return data;
+            });
+        }
+
+        // ---------------- Paging helpers ----------------
+        private void Paging(bool preserveCurrentPage = false)
+        {
+            // create new PagedCollection from current contents
+            PagedData = new PagedCollection<ClipboardContent>(contents, RowsPerPage);
+
+            // choose page to show
+            int pageToLoad = 0;
+            if (preserveCurrentPage)
+            {
+                // try keep same page index if possible
+                pageToLoad = Math.Min(CurrentPageNumber, Math.Max(0, PagedData.TotalPages - 1));
+            }
+
+            if (PagedData.TotalPages > 0)
+                PagedData.LoadPage(pageToLoad);
+            else
+                PagedData.LoadPage(0);
+
+            CurrentPageNumber = PagedData.CurrentPageIndex;
+
+            // build page buttons
+            var list = new ObservableCollection<ButtonModel>();
+            if (PagedData.TotalPages == 0)
+                list.Add(new ButtonModel { page = "1" });
+            for (int i = 1; i <= PagedData.TotalPages; i++)
+                list.Add(new ButtonModel { page = i.ToString() });
+
+            Buttons = list;
+        }
+
+        private async Task LoadPageAsync(int index)
+        {
+            BeginLoading();
+
+            try
+            {
+                // Give WPF a chance to update UI and show progress bar
+                await Task.Yield();
+
+                // Do the page load on UI thread
+                PagedData.LoadPage(index);
+
+                CurrentPageNumber = PagedData.CurrentPageIndex;
+            }
+            finally
+            {
+                await EndLoadingAfterRender();
+            }
         }
 
 
 
+
+
+        private async Task LoadNextPageAsync()
+        {
+            if (PagedData.CurrentPageIndex < PagedData.TotalPages - 1)
+                await LoadPageAsync(PagedData.CurrentPageIndex + 1);
+        }
+
+        private async Task LoadPreviousPageAsync()
+        {
+            if (PagedData.CurrentPageIndex < PagedData.TotalPages - 1 && PagedData.CurrentPageIndex > 0)
+                await LoadPageAsync(PagedData.CurrentPageIndex -1);
+        }
+        
+        private async Task SelectPageAsync(object parameter)
+        {
+            if (parameter is ButtonModel item && int.TryParse(item.page, out var oneBased))
+            {
+                var index = Math.Max(0, oneBased - 1);
+                await LoadPageAsync(index);
+            }
+        }
+
+        // ---------------- Delete ----------------
+        private async Task DeleteContentAsync(object param)
+        {
+            if (param is ClipboardContent content)
+            {
+                BeginLoading();
+                try
+                {
+                    await Task.Run(() => content.DeleteFile());
+
+                    // Update UI-bound list on UI thread
+                    contents.Remove(content);
+                    Paging(preserveCurrentPage: true);
+                }
+                finally
+                {
+                    await EndLoadingAfterRender();
+                }
+            }
+        }
+
+
+        // ---------------- Helper / View helpers ----------------
+        private void OpenViewWindow(ClipboardContent parameter)
+        {
+            var viewContentViewModel = new ViewContentViewModel(parameter);
+            var viewContentWindow = new ViewContentWindow
+            {
+                DataContext = viewContentViewModel
+            };
+            viewContentWindow.ShowDialog();
+        }
+
+        // ---------------- PropertyChanged wiring ----------------
+        // If your ObservableObject already provides this, you can remove this block.
+        public new event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        protected new void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+        }
+
+        // ButtonModel nested class kept for compatibility with your XAML
         public class ButtonModel
         {
             public string page { get; set; }
         }
-
     }
 }

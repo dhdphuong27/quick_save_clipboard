@@ -7,12 +7,20 @@
              xmlns:Icon="http://metro.mahapps.com/winfx/xaml/iconpacks"
              xmlns:core="clr-namespace:Quicksave_Clipboard.Core"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:diag="clr-namespace:System.Diagnostics;assembly=WindowsBase"
              mc:Ignorable="d"
              d:DesignHeight="640" d:DesignWidth="810"
              d:DataContext="{d:DesignInstance Type=viewModel:ClipboardViewModel}">
     <UserControl.Resources>
         <core:PageComparisonConverter x:Key="PageComparisonConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </UserControl.Resources>
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding LoadedCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
+    
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -42,12 +50,15 @@
                       ItemsSource="{Binding PagedData}" 
                       CellStyle="{DynamicResource ModernDataGridCellStyle}"
                       ColumnHeaderStyle="{DynamicResource ModernDataGridColumnHeaderStyle}"
-                      SelectedItem="{Binding SelectedDataItem}"
+                      
                       AutoGenerateColumns="False"
                       CanUserResizeColumns="False"
                       CanUserAddRows="False"
                       IsReadOnly="True"
-                      >
+                      VirtualizingStackPanel.IsVirtualizing="True"
+    VirtualizingStackPanel.VirtualizationMode="Recycling"
+    EnableRowVirtualization="True"
+    EnableColumnVirtualization="True">
             
             <DataGrid.Columns>
                 <!-- Content Column -->
@@ -112,7 +123,13 @@
                                         Tag="ContentCopy">        
                                     <Icon:PackIconMaterial Kind="ContentCopy" Style="{DynamicResource gridButtonIcon}"/>
                                 </Button>
-
+                                <Button Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        Style="{DynamicResource gridButton}" 
+                                        ToolTip="Delete"
+                                        Tag="ContentDelete">
+                                    <Icon:PackIconMaterial Kind="Delete" Style="{DynamicResource gridButtonIcon}"/>
+                                </Button>
                             </StackPanel>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
@@ -121,8 +138,26 @@
         </DataGrid>
 
         <!-- Pagination -->
+        <!-- Pagination -->
         <Border Grid.Row="4" Style="{DynamicResource PaginationBorder}">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- Progress bar -->
+                <TextBlock Text="{Binding IsLoading}"
+           Foreground="Red"/>
+                <ProgressBar 
+                    IsIndeterminate="True"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                    Height="6"
+                    Width="100"
+                    Foreground="#6B7280"
+                    Margin="0,5,0,0"/>
+
+
+
+
+
+
+                <!-- Pagination buttons -->
                 <Button Style="{StaticResource PaginationLeftButton}" Command="{Binding LoadPreviousPageCommand}"/>
                 <ItemsControl ItemsSource="{Binding Buttons}">
                     <ItemsControl.ItemsPanel>
@@ -133,18 +168,27 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Content="{Binding page}"
-                                    Command="{Binding DataContext.SelectPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}"
-                                    Style="{StaticResource PaginationNumberButton}">            
-                                <Button.Tag>
-                                    <MultiBinding Converter="{StaticResource PageComparisonConverter}"
-                                                  Mode="OneWay">
-                                        <Binding Path="page" />
-                                        <Binding Path="DataContext.CurrentPageNumber" 
-                                                 RelativeSource="{RelativeSource AncestorType=UserControl}" 
-                                                 UpdateSourceTrigger="PropertyChanged"/>
-                                    </MultiBinding>
-                                </Button.Tag>
+                            Command="{Binding DataContext.SelectPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PaginationNumberButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Value="True">
+                                                <DataTrigger.Binding>
+                                                    <MultiBinding Converter="{StaticResource PageComparisonConverter}">
+                                                        <Binding Path="page"/>
+                                                        <Binding Path="DataContext.CurrentPageNumber"
+                                                         RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    </MultiBinding>
+                                                </DataTrigger.Binding>
+                                                <!-- Active page look -->
+                                                <Setter Property="Background" Value="#6B7280"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -152,6 +196,8 @@
                 <Button Style="{StaticResource PaginationRightButton}" Command="{Binding LoadNextPageCommand}"/>
             </StackPanel>
         </Border>
-        
+
+
+
     </Grid>
 </UserControl>
