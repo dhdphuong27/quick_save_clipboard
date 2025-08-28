@@ -30,12 +30,12 @@ namespace Quicksave_Clipboard.MVVM.Model
         public ImageClipboardContent(BitmapSource bitmapSource) : base()
         {
             Image = bitmapSource;
-            ContentType = Type.Image;
+            ContentType = CType.Image;
             PreviewText = "Image (click to open with default photo viewer)";
         }
         public ImageClipboardContent(string dateCreated) : base(dateCreated)
         {
-            ContentType = Type.Image;
+            ContentType = CType.Image;
             PreviewText = "Image (click to open with default photo viewer)";
         }
         public void OpenImage()
@@ -75,7 +75,22 @@ namespace Quicksave_Clipboard.MVVM.Model
 
         public override void DeleteFile()
         {
-            
+            string directoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ClipboardHistory");
+            string fileName = ID + ".png";
+            string filePath = Path.Combine(directoryPath, fileName);
+
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // optional: log or notify
+                MessageBox.Show($"Failed to delete file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         public override void SaveToFile()

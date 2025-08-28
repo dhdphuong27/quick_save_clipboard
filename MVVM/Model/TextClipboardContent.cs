@@ -35,13 +35,13 @@ namespace Quicksave_Clipboard.MVVM.Model
         {
             FullText = text;
             PreviewText = GetPreviewText(text);
-            ContentType = Type.Text;
+            ContentType = CType.Text;
         }
         public TextClipboardContent(string text, string dateCreated) : base(dateCreated)
         {
             FullText = text;
             PreviewText = GetPreviewText(text);
-            ContentType = Type.Text;
+            ContentType = CType.Text;
         }
         private string GetPreviewText(string text)
         {

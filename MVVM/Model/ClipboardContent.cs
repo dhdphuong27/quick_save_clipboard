@@ -18,7 +18,7 @@ namespace Quicksave_Clipboard.MVVM.Model
     public abstract class ClipboardContent : INotifyPropertyChanged
     {
         public string ID { get; set; }
-        public Type ContentType { get; set; }
+        public CType ContentType { get; set; }
         
         public DateTime DateCreated { get; set; }
         public Status Status { get; set; }
@@ -84,7 +84,7 @@ namespace Quicksave_Clipboard.MVVM.Model
         Local,
         Cloud
     }
-    public enum Type
+    public enum CType
     {
         Text,
         Image

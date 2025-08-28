@@ -59,6 +59,7 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
         public RelayCommand SaveContentCommand { get; }
         public RelayCommand CopyCommand { get; }
         public RelayCommand ViewCommand { get; }
+        public RelayCommand SearchCommand { get; }
 
         public int RowsPerPage = 7;
 
@@ -77,6 +78,7 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
             SaveContentCommand = new RelayCommand(SaveContent);
             CopyCommand = new RelayCommand(param => CopyContent(param));
             ViewCommand = new RelayCommand(param => ViewContent(param));
+            SearchCommand = new RelayCommand(()=>{ PagedData.LoadPage(0); });
 
 
         }
@@ -228,7 +230,8 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
                         data.Add(new ImageClipboardContent(tmpFileName));
                     }
                 }
-                return data;
+
+                return data.OrderByDescending(x => x.DateCreated).ToList();
             });
         }
 
@@ -254,13 +257,19 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
             CurrentPageNumber = PagedData.CurrentPageIndex;
 
             // build page buttons
+            
+
+            Buttons = BuildPageButtons();
+        }
+        //Should modify so that it works after filtering 
+        private ObservableCollection<ButtonModel> BuildPageButtons()
+        {
             var list = new ObservableCollection<ButtonModel>();
             if (PagedData.TotalPages == 0)
                 list.Add(new ButtonModel { page = "1" });
             for (int i = 1; i <= PagedData.TotalPages; i++)
                 list.Add(new ButtonModel { page = i.ToString() });
-
-            Buttons = list;
+            return list;
         }
 
         private async Task LoadPageAsync(int index)
