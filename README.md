@@ -1,2 +1,2 @@
 # quick_save_clipboard
-Quickly save your clipboard content into a file
+Save whatever in your clipboard into a file using Ctrl + Alt + V
