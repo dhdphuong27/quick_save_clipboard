@@ -23,6 +23,19 @@ namespace Quicksave_Clipboard.MVVM.Model
         public DateTime DateCreated { get; set; }
         public Status Status { get; set; }
 
+        private string _previewText;
+        public string PreviewText
+        {
+            get { return _previewText; }
+            set
+            {
+                if (_previewText != value)
+                {
+                    _previewText = value;
+                    OnPropertyChanged(nameof(PreviewText));
+                }
+            }
+        }
 
         public ClipboardContent()
         {

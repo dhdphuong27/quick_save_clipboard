@@ -7,12 +7,13 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 
+
 namespace Quicksave_Clipboard.MVVM.Model
 {
     public class TextClipboardContent : ClipboardContent
     {
         private string _fullText;
-        private string _previewText;
+        
 
         public string FullText
         {
@@ -29,18 +30,7 @@ namespace Quicksave_Clipboard.MVVM.Model
                 }
             }
         }
-        public string PreviewText
-        {
-            get { return _previewText; }
-            private set
-            {
-                if (_previewText != value)
-                {
-                    _previewText = value;
-                    OnPropertyChanged(nameof(PreviewText));
-                }
-            }
-        }
+        
         public TextClipboardContent(string text) : base()
         {
             FullText = text;
@@ -68,14 +58,6 @@ namespace Quicksave_Clipboard.MVVM.Model
             {
                 Directory.CreateDirectory(directoryPath);
             }
-            ////add random string everytime it's saved so that it wouldn't collide if user double click save file
-            //const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            //StringBuilder randomStringBuilder = new StringBuilder(3);
-            //Random random = new Random();
-            //for (int i = 0; i < 3; i++)
-            //{
-            //    randomStringBuilder.Append(chars[random.Next(chars.Length)]);
-            //}
 
             string fileName = ID + ".txt";
 

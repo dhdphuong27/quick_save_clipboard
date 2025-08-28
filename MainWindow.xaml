@@ -28,7 +28,7 @@
 
     <Border Background="#1b1c1d"
             CornerRadius="30"
-            >
+            MouseDown="Border_MouseDown">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="150"/>
@@ -64,20 +64,13 @@
                 </StackPanel>
             </DockPanel>
 
-            <Border Grid.Row="1" Background="#282a2c " CornerRadius="0 30 0 30">
+            <Border Grid.Row="0" Grid.RowSpan="2" Background="#282a2c " CornerRadius="0 30 0 30">
                 <DockPanel>
-                    <Border Width="80" Height="80" Padding="3" Background="White" CornerRadius="100"
-                            DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="20 -30 0 0 ">
-                        <Ellipse>
-                            <Ellipse.Fill>
-                                <ImageBrush ImageSource="/Images/default_pfp.jpg"></ImageBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
-                    </Border>
-                    <TextBlock Text="Silvers Club"  Foreground="White" FontSize="22" FontWeight="SemiBold"
+
+                    <TextBlock Text="Quicksave clipboard"  Foreground="White" FontSize="16" FontWeight="SemiBold"
                                DockPanel.Dock="Top" TextAlignment="Center" Margin="5 25 0 10"/>
-                    <TextBlock Text="Silvers Club"  Foreground="#d0bfff" FontSize="14" FontWeight="SemiBold"
-                               DockPanel.Dock="Top" TextAlignment="Center"/>
+                    <!--<TextBlock Text="Clipboard"  Foreground="#d0bfff" FontSize="14" FontWeight="SemiBold"
+                               DockPanel.Dock="Top" TextAlignment="Center"/>-->
 
                     <Separator Margin="25" DockPanel.Dock="Top" Height="0.8" Background="#7e5fdc"/>
 
@@ -85,19 +78,32 @@
 
                         <RadioButton
                              Style="{StaticResource menuButton}"
-                             Command="{Binding ClipboardViewCommand}">
+                             Command="{Binding ClipboardViewCommand}"
+                            IsChecked="True">
                             <StackPanel Orientation="Horizontal">
                                 <Icon:PackIconMaterial Kind="ClipboardEdit" Style="{StaticResource menuButtonIcon}"/>
                                 <TextBlock Text="Clipboard"/>
                             </StackPanel>
                         </RadioButton>
-
-
-
+                        <RadioButton Style="{StaticResource menuButton}"
+                                     Command="{Binding HowToUseCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <Icon:PackIconMaterial Kind="Information" Style="{StaticResource menuButtonIcon}"/>
+                                <TextBlock Text="How to use"/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton
+                             Style="{StaticResource menuButton}"
+                             Command="{Binding SettingsCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <Icon:PackIconMaterial Kind="Cog" Style="{StaticResource menuButtonIcon}"/>
+                                <TextBlock Text="Settings"/>
+                            </StackPanel>
+                        </RadioButton>
                     </StackPanel>
                 </DockPanel>
             </Border>
-            
+
 
         </Grid>
 

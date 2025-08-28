@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media.Imaging;
 
 namespace Quicksave_Clipboard.MVVM.ViewModel
 {
@@ -91,7 +92,6 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
         {
             if (_loadingCount > 0) IsLoading = true;
             else IsLoading = false;
-            //MessageBox.Show("Setting IsLoading with _loadingCount = " + _loadingCount.ToString());
             OnPropertyChanged(nameof(IsLoading));
         }
 
@@ -115,31 +115,43 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
         // Save current clipboard text (must run on UI thread because of Clipboard API)
         public void SaveContent(object parameter)
         {
-            if (!Clipboard.ContainsText())
+            if (Clipboard.ContainsText())
             {
-                MessageBox.Show("No text found in clipboard.", "Clipboard Content");
-                return;
+                BeginLoading();
+                try
+                {
+                    string clipboardText = Clipboard.GetText();
+                    var content = new TextClipboardContent(clipboardText);
+
+                    // persist to disk (synchronous here; it's small text write)
+                    content.SaveToFile();
+
+                    // keep newest items at top
+                    contents.Insert(0, content);
+
+                    // refresh paging (keeps you on the current page if possible)
+                    Paging(preserveCurrentPage: true);
+                }
+                finally
+                {
+                    EndLoadingAfterRender();
+                }
             }
-
-            BeginLoading();
-            try
+            else if (Clipboard.ContainsImage())
             {
-                string clipboardText = Clipboard.GetText();
-                var content = new TextClipboardContent(clipboardText);
-
-                // persist to disk (synchronous here; it's small text write)
+                BitmapSource clipboardImage = Clipboard.GetImage();
+                var content = new ImageClipboardContent(clipboardImage);
                 content.SaveToFile();
-
-                // keep newest items at top
                 contents.Insert(0, content);
-
-                // refresh paging (keeps you on the current page if possible)
                 Paging(preserveCurrentPage: true);
             }
-            finally
+            else
             {
-                EndLoadingAfterRender();
+                MessageBox.Show("Clipboard does not contain text or image data.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            
+
+            
         }
 
         private void CopyContent(object param)
@@ -152,9 +164,12 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
 
         private void ViewContent(object param)
         {
-            if (param is ClipboardContent rowData)
+            if (param is TextClipboardContent textContent)
             {
-                OpenViewWindow(rowData);
+                OpenViewWindow(textContent);
+            }else if (param is ImageClipboardContent imageContent)
+            {
+                imageContent.OpenImage();
             }
         }
 
@@ -196,12 +211,22 @@ namespace Quicksave_Clipboard.MVVM.ViewModel
                 }
 
                 var textFiles = Directory.EnumerateFiles(folderPath, "*.txt");
+                var pngFiles = Directory.EnumerateFiles(folderPath, "*.png");
+                var allFiles = textFiles.Concat(pngFiles);
                 var data = new List<ClipboardContent>();
-                foreach (var file in textFiles.Reverse())
+                foreach (var file in allFiles.Reverse())
                 {
-                    string tmpStr = File.ReadAllText(file);
                     string tmpFileName = Path.GetFileNameWithoutExtension(file);
-                    data.Add(new TextClipboardContent(tmpStr, tmpFileName));
+                    
+                    if (Path.GetExtension(file).ToLower() == ".txt")
+                    {
+                        string tmpStr = File.ReadAllText(file);
+                        data.Add(new TextClipboardContent(tmpStr, tmpFileName));
+                    }
+                    else if (Path.GetExtension(file).ToLower() == ".png")
+                    {
+                        data.Add(new ImageClipboardContent(tmpFileName));
+                    }
                 }
                 return data;
             });

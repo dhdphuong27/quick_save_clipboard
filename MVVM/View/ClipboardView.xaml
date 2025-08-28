@@ -20,7 +20,7 @@
             <i:InvokeCommandAction Command="{Binding LoadedCommand}" />
         </i:EventTrigger>
     </i:Interaction.Triggers>
-    
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -46,23 +46,22 @@
         <!-- Notification -->
         <!--<TextBlock Grid.Row="1" Text="{Binding TestMsg}" 
                    Style="{DynamicResource NotificationTextblock}" Margin="0,0,0,15"/>-->
-        <DataGrid Grid.Row="2" Style="{DynamicResource ModernClipboardDataGridStyle}"
-                      ItemsSource="{Binding PagedData}" 
-                      CellStyle="{DynamicResource ModernDataGridCellStyle}"
-                      ColumnHeaderStyle="{DynamicResource ModernDataGridColumnHeaderStyle}"
-                      
-                      AutoGenerateColumns="False"
-                      CanUserResizeColumns="False"
-                      CanUserAddRows="False"
-                      IsReadOnly="True"
-                      VirtualizingStackPanel.IsVirtualizing="True"
-    VirtualizingStackPanel.VirtualizationMode="Recycling"
-    EnableRowVirtualization="True"
-    EnableColumnVirtualization="True">
-            
+        <DataGrid   Grid.Row="2" Style="{DynamicResource ModernClipboardDataGridStyle}"
+                    ItemsSource="{Binding PagedData}" 
+                    CellStyle="{DynamicResource ModernDataGridCellStyle}"
+                    ColumnHeaderStyle="{DynamicResource ModernDataGridColumnHeaderStyle}"
+                    AutoGenerateColumns="False"
+                    CanUserResizeColumns="False"
+                    CanUserAddRows="False"
+                    IsReadOnly="True"
+                    VirtualizingStackPanel.IsVirtualizing="True"
+                    VirtualizingStackPanel.VirtualizationMode="Recycling"
+                    EnableRowVirtualization="True"
+                    EnableColumnVirtualization="True">
+
             <DataGrid.Columns>
                 <!-- Content Column -->
-                <DataGridTextColumn Header="Content" Width="376">
+                <DataGridTextColumn Header="Content" Width="326">
                     <DataGridTextColumn.Binding>
                         <Binding Path="PreviewText" Mode="OneWay"/>
                     </DataGridTextColumn.Binding>
@@ -73,9 +72,10 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-
+                
+                
                 <!-- Saved_date Column -->
-                <DataGridTextColumn Header="Date created" Binding="{Binding DateCreated, StringFormat={}{0:dd/MM/yyyy}}" Width="100">
+                <DataGridTextColumn Header="Saved at" Binding="{Binding DateCreated, StringFormat={}{0:HH:mm:ss dd/MM/yyyy}}" Width="150">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock" BasedOn="{StaticResource CellContent}">
                             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -120,7 +120,7 @@
                                         CommandParameter="{Binding}"
                                         Style="{DynamicResource gridButton}" 
                                         ToolTip="Copy"
-                                        Tag="ContentCopy">        
+                                        Tag="ContentCopy">
                                     <Icon:PackIconMaterial Kind="ContentCopy" Style="{DynamicResource gridButtonIcon}"/>
                                 </Button>
                                 <Button Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -142,8 +142,7 @@
         <Border Grid.Row="4" Style="{DynamicResource PaginationBorder}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <!-- Progress bar -->
-                <TextBlock Text="{Binding IsLoading}"
-           Foreground="Red"/>
+                <!--<TextBlock Text="{Binding IsLoading}" Foreground="Red"/>-->
                 <ProgressBar 
                     IsIndeterminate="True"
                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -151,10 +150,6 @@
                     Width="100"
                     Foreground="#6B7280"
                     Margin="0,5,0,0"/>
-
-
-
-
 
 
                 <!-- Pagination buttons -->
@@ -182,7 +177,7 @@
                                                     </MultiBinding>
                                                 </DataTrigger.Binding>
                                                 <!-- Active page look -->
-                                                <Setter Property="Background" Value="#6B7280"/>
+                                                <Setter Property="Background" Value="#404040"/>
                                                 <Setter Property="Foreground" Value="White"/>
                                                 <Setter Property="FontWeight" Value="Bold"/>
                                             </DataTrigger>
